@@ -129,6 +129,9 @@ class QualibrationFigure:
                 row_main = row
                 row_resid = None
             sel = ds.sel({qubit_dim: name}) if qubit_dim in ds.dims else ds
+            
+            # Initialize overlay y-values collection for this qubit
+            overlay_y_vals = []
 
             if y is None:
                 x_vals = sel.coords[x].values if x in sel.coords else np.asarray(sel[x].values)
@@ -182,7 +185,6 @@ class QualibrationFigure:
                 xlab = label_from_attrs(x, (sel.coords[x].attrs if x in sel.coords else {}))
                 ylab = label_from_attrs(var, sel[var].attrs if hasattr(sel[var], "attrs") else {})
                 self._fig.update_xaxes(title_text=xlab, row=row_main, col=col)
-                self._fig.update_yaxes(title_text=ylab, row=row_main, col=col)
 
                 if x2 and x2 in sel.coords:
                     xv2 = np.asarray(sel.coords[x2].values)
@@ -229,14 +231,41 @@ class QualibrationFigure:
                 else:
                     panel_overlays = overlays
                 for ov in panel_overlays:
-                    # Pass x values for fit overlays
+                    # Pass x and y values for overlays that need data ranges
                     x_vals_for_overlay = x_vals if 'x_vals' in locals() else None
-                    ov.add_to(self._fig, row=row_main, col=col, theme=_config.CURRENT_THEME, x=x_vals_for_overlay, **style_overrides)
+                    y_vals_for_overlay = y_vals if 'y_vals' in locals() else None
+                    ov.add_to(self._fig, row=row_main, col=col, theme=_config.CURRENT_THEME, x=x_vals_for_overlay, y=y_vals_for_overlay, **style_overrides)
                     
-                    # Check if this overlay provides fit data for residuals
+                    # Collect y-values from overlays for range calculation
                     if hasattr(ov, 'y_fit') and ov.y_fit is not None:
+                        overlay_y_vals.append(ov.y_fit)
                         fit_data = ov.y_fit
                         fit_x_vals = x_vals_for_overlay if x_vals_for_overlay is not None else x_vals
+
+            # Set y-axis range considering both data and overlays (after overlays are processed)
+            if 'y_vals' in locals():
+                all_y_vals = [y_vals]
+                if overlay_y_vals:
+                    all_y_vals.extend(overlay_y_vals)
+                
+                # Combine all y-values to get the full range
+                combined_y_vals = np.concatenate(all_y_vals)
+                y_min, y_max = np.min(combined_y_vals), np.max(combined_y_vals)
+                y_range = y_max - y_min
+                
+                if y_range > 0:
+                    # Add more padding (15% of range) to leave more space
+                    padding = 0.15 * y_range
+                    y_min -= padding
+                    y_max += padding
+                    self._fig.update_yaxes(
+                        title_text=ylab, 
+                        range=[y_min, y_max],
+                        row=row_main, 
+                        col=col
+                    )
+                else:
+                    self._fig.update_yaxes(title_text=ylab, row=row_main, col=col)
 
             if residuals and row_resid is not None:
                 # Add zero reference line

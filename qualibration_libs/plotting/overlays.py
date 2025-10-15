@@ -45,28 +45,54 @@ class RefLine(Overlay):
     dash: str = "dot"
     width: Optional[float] = None
 
-    def add_to(self, fig: go.Figure, *, row: int, col: int, theme, **style):
+    def add_to(self, fig: go.Figure, *, row: int, col: int, theme, x=None, y=None, **style):
         if self.x is not None:
+            # Use actual data range for y-axis if available, otherwise fall back to paper coordinates
+            if y is not None:
+                y_min, y_max = np.min(y), np.max(y)
+                # Add more padding (15% of range) to extend beyond data
+                y_range = y_max - y_min
+                padding = 0.15 * y_range if y_range > 0 else 0.01
+                y_min -= padding
+                y_max += padding
+                yref = "y"
+            else:
+                y_min, y_max = 0, 1
+                yref = "paper"
+                
             fig.add_shape(
                 type="line",
                 x0=self.x,
-                y0=0,
+                y0=y_min,
                 x1=self.x,
-                y1=1,
+                y1=y_max,
                 xref="x",
-                yref="paper",
+                yref=yref,
                 line={"dash": self.dash, "width": self.width or theme.line_width, **style.get("line", {})},
                 row=row,
                 col=col,
             )
         if self.y is not None:
+            # Use actual data range for x-axis if available, otherwise fall back to paper coordinates
+            if x is not None:
+                x_min, x_max = np.min(x), np.max(x)
+                # Add more padding (15% of range) to extend beyond data
+                x_range = x_max - x_min
+                padding = 0.15 * x_range if x_range > 0 else 0.01
+                x_min -= padding
+                x_max += padding
+                xref = "x"
+            else:
+                x_min, x_max = 0, 1
+                xref = "paper"
+                
             fig.add_shape(
                 type="line",
-                x0=0,
+                x0=x_min,
                 y0=self.y,
-                x1=1,
+                x1=x_max,
                 y1=self.y,
-                xref="paper",
+                xref=xref,
                 yref="y",
                 line={"dash": self.dash, "width": self.width or theme.line_width, **style.get("line", {})},
                 row=row,

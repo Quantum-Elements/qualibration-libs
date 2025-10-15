@@ -61,6 +61,60 @@ class TestRefLine:
         assert call_args[1]['yref'] == 'paper'
         assert call_args[1]['row'] == 1
         assert call_args[1]['col'] == 1
+    
+    def test_add_to_figure_with_data(self):
+        """Test adding reference line to figure with data ranges."""
+        ref_line = RefLine(x=5.0, name="Test")
+        
+        # Mock figure and theme
+        mock_fig = Mock()
+        mock_theme = Mock()
+        mock_theme.line_width = 2
+        
+        # Test with y data provided
+        y_data = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        ref_line.add_to(mock_fig, row=1, col=1, theme=mock_theme, y=y_data)
+        
+        # Should call add_shape for vertical line with data coordinates and padding
+        mock_fig.add_shape.assert_called_once()
+        call_args = mock_fig.add_shape.call_args
+        assert call_args[1]['type'] == 'line'
+        assert call_args[1]['x0'] == 5.0
+        assert call_args[1]['x1'] == 5.0
+        # With 15% padding: 1.0 - 0.6 = 0.4, 5.0 + 0.6 = 5.6
+        assert call_args[1]['y0'] == 0.4  # min of y_data with padding
+        assert call_args[1]['y1'] == 5.6  # max of y_data with padding
+        assert call_args[1]['xref'] == 'x'
+        assert call_args[1]['yref'] == 'y'  # data coordinates
+        assert call_args[1]['row'] == 1
+        assert call_args[1]['col'] == 1
+    
+    def test_horizontal_line_with_data(self):
+        """Test adding horizontal reference line with data ranges."""
+        ref_line = RefLine(y=3.0, name="Test")
+        
+        # Mock figure and theme
+        mock_fig = Mock()
+        mock_theme = Mock()
+        mock_theme.line_width = 2
+        
+        # Test with x data provided
+        x_data = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
+        ref_line.add_to(mock_fig, row=1, col=1, theme=mock_theme, x=x_data)
+        
+        # Should call add_shape for horizontal line with data coordinates and padding
+        mock_fig.add_shape.assert_called_once()
+        call_args = mock_fig.add_shape.call_args
+        assert call_args[1]['type'] == 'line'
+        # With 15% padding: 0.0 - 0.6 = -0.6, 4.0 + 0.6 = 4.6
+        assert call_args[1]['x0'] == -0.6  # min of x_data with padding
+        assert call_args[1]['x1'] == 4.6   # max of x_data with padding
+        assert call_args[1]['y0'] == 3.0
+        assert call_args[1]['y1'] == 3.0
+        assert call_args[1]['xref'] == 'x'  # data coordinates
+        assert call_args[1]['yref'] == 'y'
+        assert call_args[1]['row'] == 1
+        assert call_args[1]['col'] == 1
 
 
 class TestLineOverlay:
