@@ -248,6 +248,41 @@ grid = QubitGrid(
 )
 ```
 
+### Legacy-Compatible Grid Helpers
+
+```python
+# Build a QubitGrid from a qubit list that has grid_location fields
+from qualibration_libs.plotting import make_qubit_grid_from_locations
+
+# qubits: sequence of dicts or objects with attributes
+#   - name or qubit (identifier)
+#   - grid_location as "col,row" string (e.g., "1,0")
+grid = make_qubit_grid_from_locations(ds, qubits, qubit_dim='qubit')
+
+fig = qplot.QualibrationFigure.plot(
+    ds,
+    x='frequency',
+    data_var='amplitude',
+    grid=grid
+)
+
+# If you prefer iterating like the previous grid_iter pattern
+from qualibration_libs.plotting import grid_iter
+import plotly.graph_objects as go
+
+for (row, col), qubit in grid_iter(ds, grid, qubit_dim='qubit'):
+    sel = ds.sel(qubit=qubit['qubit'])
+    # Add custom content to (row, col) using Plotly add_trace
+    fig.figure.add_trace(
+        go.Scatter(x=sel['frequency'].values, y=sel['amplitude'].values, name=qubit['qubit']),
+        row=row, col=col
+    )
+```
+
+Notes:
+- `grid_iter` yields 1-indexed `(row, col)` positions matching Plotly subplots.
+- `grid_location` strings are parsed as `"col,row"` and mapped to `(row, col)`.
+
 ## Overlays
 
 ### Reference Lines

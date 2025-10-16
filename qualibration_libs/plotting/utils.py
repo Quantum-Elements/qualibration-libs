@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Tuple, Any, Mapping, Iterable
+from typing import Tuple, Any, Mapping, Iterable, Sequence, Iterator
 
 import xarray as xr
+from .grid import QubitGrid
 
 
 def get_axis_label(ds: xr.Dataset, coord: str) -> str:
@@ -57,3 +58,42 @@ def compute_secondary_ticks(
     tickvals = [p[i] for i in idxs]
     ticktext = [str(s[i]) for i in idxs]
     return tickvals, ticktext
+
+
+def grid_iter(ds: xr.Dataset, grid: QubitGrid, qubit_dim: str = "qubit") -> Iterator[Tuple[Tuple[int, int], dict]]:
+    names: Sequence[str]
+    if qubit_dim in ds.dims:
+        names = list(map(str, ds.coords[qubit_dim].values))
+    else:
+        names = ["qubit"]
+    _, _, positions = grid.resolve(names)
+    for name in names:
+        if name not in positions:
+            continue
+        row, col = positions[name]
+        yield (row, col), {"qubit": name}
+
+
+def make_qubit_grid_from_locations(ds: xr.Dataset, qubits: Sequence[Any], qubit_dim: str = "qubit") -> QubitGrid:
+    names: Sequence[str] = list(map(str, ds.coords[qubit_dim].values)) if qubit_dim in ds.dims else []
+    coords: dict[str, Tuple[int, int]] = {}
+
+    def _get_name(idx: int, q: Any) -> str:
+        if isinstance(q, dict):
+            return str(q.get("qubit") or q.get("name") or (names[idx] if idx < len(names) else idx))
+        return str(getattr(q, "qubit", None) or getattr(q, "name", None) or (names[idx] if idx < len(names) else idx))
+
+    def _get_location(q: Any) -> Any:
+        if isinstance(q, dict):
+            return q.get("grid_location")
+        return getattr(q, "grid_location", None)
+
+    for i, q in enumerate(qubits):
+        loc = _get_location(q)
+        if not loc:
+            continue
+        row, col = parse_grid_location(str(loc))
+        name = _get_name(i, q)
+        coords[name] = (row, col)
+
+    return QubitGrid(coords=coords)
