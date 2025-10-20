@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Optional
 
 import numpy as np
 import plotly.graph_objects as go
 
-from .config import PlotTheme
 
 
 class Overlay:
@@ -213,73 +212,32 @@ class LineOverlay(Overlay):
 
 @dataclass
 class RefLine(Overlay):
-    """Add vertical and/or horizontal reference lines to a plot.
-
-    RefLine uses Plotly's add_vline and add_hline methods to draw reference
-    lines that span the full extent of a subplot. Useful for marking thresholds,
-    target values, or other important reference points.
-
-    Attributes:
-        x (float | None): X-coordinate for a vertical reference line. If None,
-            no vertical line is drawn.
-        y (float | None): Y-coordinate for a horizontal reference line. If None,
-            no horizontal line is drawn.
-        name (str | None): Optional name for the reference line (currently unused).
-        dash (str): Line dash style. Options include "solid", "dot", "dash",
-            "longdash", "dashdot", "longdashdot". Default is "dot".
-        width (float | None): Line width in pixels. If None, uses theme.line_width.
-        color (str | None): Line color. Can be a named color (e.g., "red", "blue"),
-            hex color (e.g., "#FF0000"), or RGB/RGBA string. If None, uses the
-            theme's default color.
-
-    Examples:
-        >>> # Add a vertical reference line at x=5
-        >>> RefLine(x=5.0)
-
-        >>> # Add a horizontal reference line at y=0.5 with custom styling
-        >>> RefLine(y=0.5, dash="dash", width=2, color="red")
-
-        >>> # Add both vertical and horizontal reference lines
-        >>> RefLine(x=3.0, y=0.8, color="#00FF00")
-    """
-
-    x: float | None = None
-    y: float | None = None
-    name: str | None = None
+    x: Optional[float] = None
+    y: Optional[float] = None
+    name: Optional[str] = None
     dash: str = "dot"
-    width: float | None = None
-    color: str | None = None
+    width: Optional[float] = None
+    color: Optional[str] = None
 
-    def add_to(self, fig: go.Figure, *, row: int, col: int, theme: PlotTheme, **style):
-        """Add the reference line(s) to the specified subplot.
-
-        Constructs line configuration from instance attributes and theme settings,
-        then uses Plotly's add_vline/add_hline to draw lines that automatically
-        span the full extent of the subplot.
-
-        Args:
-            fig (go.Figure): The Plotly figure to add the reference line to.
-            row (int): Subplot row index (1-indexed).
-            col (int): Subplot column index (1-indexed).
-            theme (PlotTheme): Theme object providing default styling values.
-            **style: Additional style overrides. Can include a "line" dict with
-                custom line properties (color, dash, width, etc.).
-
-        Note:
-            If both self.x and self.y are set, both vertical and horizontal
-            lines will be drawn, creating a crosshair effect.
-        """
-        line_config = {
-            "width": self.width or theme.line_width,
-            "dash": self.dash,
-            **style.get("line", {}),
-        }
+    def __post_init__(self):
         if self.color is not None:
-            line_config["color"] = self.color
+            if not isinstance(self.color, str) or len(self.color) != 7 or not self.color.startswith("#") or not all(ch in "0123456789abcdefABCDEF" for ch in self.color[1:]):
+                raise ValueError("RefLine.color must be a 6-digit hex string like '#RRGGBB'.")
+
+    def add_to(self, fig: go.Figure, *, row: int, col: int, theme, **style):
+        # Prepare base line style and merge with any overrides
         if self.x is not None:
-            fig.add_vline(x=self.x, row=row, col=col, line=line_config)
+            line_style = {"dash": self.dash, "width": self.width or theme.line_width}
+            if self.color:
+                line_style["color"] = self.color
+            line_style.update(style.get("line", {}))
+            fig.add_vline(x=self.x, line=line_style, row=row, col=col)
         if self.y is not None:
-            fig.add_hline(y=self.y, row=row, col=col, line=line_config)
+            line_style = {"dash": self.dash, "width": self.width or theme.line_width}
+            if self.color:
+                line_style["color"] = self.color
+            line_style.update(style.get("line", {}))
+            fig.add_hline(y=self.y, line=line_style, row=row, col=col)
 
 
 @dataclass
