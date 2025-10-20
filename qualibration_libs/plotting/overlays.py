@@ -44,9 +44,19 @@ class RefLine(Overlay):
     name: Optional[str] = None
     dash: str = "dot"
     width: Optional[float] = None
+    color: Optional[str] = None
+
+    def __post_init__(self):
+        if self.color is not None:
+            if not isinstance(self.color, str) or len(self.color) != 7 or not self.color.startswith("#") or not all(ch in "0123456789abcdefABCDEF" for ch in self.color[1:]):
+                raise ValueError("RefLine.color must be a 6-digit hex string like '#RRGGBB'.")
 
     def add_to(self, fig: go.Figure, *, row: int, col: int, theme, **style):
         if self.x is not None:
+            line_style = {"dash": self.dash, "width": self.width or theme.line_width}
+            if self.color:
+                line_style["color"] = self.color
+            line_style.update(style.get("line", {}))
             fig.add_shape(
                 type="line",
                 x0=self.x,
@@ -55,11 +65,15 @@ class RefLine(Overlay):
                 y1=1,
                 xref="x",
                 yref="paper",
-                line={"dash": self.dash, "width": self.width or theme.line_width, **style.get("line", {})},
+                line=line_style,
                 row=row,
                 col=col,
             )
         if self.y is not None:
+            line_style = {"dash": self.dash, "width": self.width or theme.line_width}
+            if self.color:
+                line_style["color"] = self.color
+            line_style.update(style.get("line", {}))
             fig.add_shape(
                 type="line",
                 x0=0,
@@ -68,7 +82,7 @@ class RefLine(Overlay):
                 y1=self.y,
                 xref="paper",
                 yref="y",
-                line={"dash": self.dash, "width": self.width or theme.line_width, **style.get("line", {})},
+                line=line_style,
                 row=row,
                 col=col,
             )

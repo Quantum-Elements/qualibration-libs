@@ -771,8 +771,9 @@ Create a new plot from data.
 
 ### Overlay Classes
 
-#### `RefLine(x=None, y=None, name=None, dash='dot', width=None)`
+#### `RefLine(x=None, y=None, name=None, dash='dot', width=None, color=None)`
 Reference line overlay.
+- `color` (str, optional): 6-digit hex `'#RRGGBB'`. Validated during initialization. To use other color formats, specify `line={'color': ...}` via `QualibrationFigure.plot(...)` style overrides.
 
 #### `LineOverlay(x, y, name=None, dash='dash', width=None, show_legend=True)`
 Custom line overlay.
