@@ -212,20 +212,88 @@ class LineOverlay(Overlay):
 
 @dataclass
 class RefLine(Overlay):
-    x: Optional[float] = None
-    y: Optional[float] = None
-    name: Optional[str] = None
-    dash: str = "dot"
-    width: Optional[float] = None
-    color: Optional[str] = None
+    """Reference line overlay for vertical and/or horizontal lines.
 
+    Overview:
+    - Axis-aware lines via Plotly `add_vline` / `add_hline` that span the
+      subplot's axis limits. Lines respect zoom/autorange and explicit axis ranges.
+    - Useful for marking thresholds, target values, crosshairs, or baseline levels.
+
+    Attributes:
+    - x (float | None): X-coordinate for a vertical line. If None, no vertical line.
+    - y (float | None): Y-coordinate for a horizontal line. If None, no horizontal line.
+    - name (str | None): Optional name (currently unused in legend).
+    - dash (str): Line dash style (e.g., "solid", "dot", "dash", "longdash"). Default "dot".
+    - width (float | None): Line width in px. If None, uses `theme.line_width`.
+    - color (str | None): Line color string. Accepts any Plotly-compatible color
+      (e.g., "#FF0000", "red", "rgb(255,0,0)"). If None, theme/default color is used.
+
+    Styling and precedence:
+    - Base style: `{dash, width or theme.line_width}`.
+    - If `color` is provided on the overlay, it is included.
+    - Plot-level overrides passed via `style['line']` take precedence over all
+      overlay attributes (including `color`).
+
+    Subplots:
+    - `row` and `col` route the line to the correct subplot created with
+      `plotly.subplots.make_subplots`.
+
+    Examples:
+    >>> # Vertical reference line at x=5 with a hex color
+    >>> RefLine(x=5.0, color="#FF5733")
+    >>>
+    >>> # Override color/width at plot-time (override wins over overlay settings)
+    >>> fig = make_subplots(rows=1, cols=1)
+    >>> RefLine(x=5.0, color="#FF5733").add_to(fig, row=1, col=1, theme=theme,
+    ...     line={"color": "blue", "width": 3})
+    >>>
+    >>> # Draw both vertical and horizontal lines (crosshair)
+    >>> RefLine(x=3.0, y=0.8, dash="dash")
+    """
+
+    x: float | None = None
+    y: float | None = None
+    name: str | None = None
+    dash: str = "dot"
+    width: float | None = None
+    color: str | None = None
     def __post_init__(self):
         if self.color is not None:
             if not isinstance(self.color, str) or len(self.color) != 7 or not self.color.startswith("#") or not all(ch in "0123456789abcdefABCDEF" for ch in self.color[1:]):
                 raise ValueError("RefLine.color must be a 6-digit hex string like '#RRGGBB'.")
 
-    def add_to(self, fig: go.Figure, *, row: int, col: int, theme, **style):
-        # Prepare base line style and merge with any overrides
+    def add_to(self, fig: go.Figure, *, row: int, col: int, theme: PlotTheme, **style):
+        """Add the reference line(s) to a specific subplot.
+
+        Builds a merged `line` style from overlay attributes and the theme, then
+        draws axis-aware lines using Plotly's `add_vline`/`add_hline`. Lines span
+        the current axes limits of the targeted subplot (no use of paper coords),
+        so they respect zooming, autorange, and explicit axis ranges.
+
+        Parameters:
+        - fig (go.Figure): Target Plotly figure.
+        - row (int): Subplot row index (1-indexed).
+        - col (int): Subplot column index (1-indexed).
+        - theme (PlotTheme): Provides default `line_width` and global styles.
+        - **style: Plot-level overrides. If `style` contains a `line` dict,
+          its values override overlay attributes (including `color`).
+
+        Styling precedence:
+        1) Base from overlay: `{dash, width or theme.line_width}`
+        2) Include `color` from overlay if provided
+        3) Override with `style['line']` if present
+
+        Behavior:
+        - If `x` is set, draws `add_vline(x=...)` in the given (row, col).
+        - If `y` is set, draws `add_hline(y=...)` in the given (row, col).
+        - If both are set, draws a crosshair.
+
+        Returns:
+        - None
+
+        Notes:
+        - Invalid `row`/`col` values or missing subplot grids will raise Plotly errors.
+        """
         if self.x is not None:
             line_style = {"dash": self.dash, "width": self.width or theme.line_width}
             if self.color:
