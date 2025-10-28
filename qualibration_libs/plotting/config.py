@@ -28,6 +28,16 @@ class PlotTheme:
         "#9d755d",
         "#bab0ac",
     )
+    fit_colorway: tuple[str] = (
+        "#d62728",
+        "#2ca02c",
+        "#ff7f0e",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+    )
 
 
 @dataclass
@@ -38,6 +48,7 @@ class RcParams:
 CURRENT_THEME = PlotTheme()
 CURRENT_RC = RcParams()
 CURRENT_PALETTE: Optional[Tuple[str, ...]] = None
+CURRENT_FIT_PALETTE: Optional[Tuple[str, ...]] = None
 
 
 def apply_theme_to_layout(layout: Any) -> None:

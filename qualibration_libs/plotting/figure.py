@@ -131,7 +131,9 @@ class QualibrationFigure:
     def __init__(self):
         self._fig = go.Figure()
         self._color_index = 0
+        self._fit_color_index = 0
         self._legend_shown: set[str] = set()
+        self._fit_color_indices: dict[tuple[int, int], int] = {}
 
     @property
     def figure(self) -> go.Figure:
@@ -149,6 +151,28 @@ class QualibrationFigure:
         palette = _config.CURRENT_PALETTE or _config.CURRENT_THEME.colorway
         color = palette[self._color_index % len(palette)]
         self._color_index += 1
+        return color
+
+    def _next_fit_color(self, row: int, col: int) -> str:
+        """Get the next fit color for a specific subplot.
+        
+        Colors cycle per subplot, restarting from the first color for each new subplot.
+        
+        Args:
+            row: Subplot row (1-indexed)
+            col: Subplot column (1-indexed)
+            
+        Returns:
+            Color string for the fit line
+        """
+        subplot_key = (row, col)
+        if subplot_key not in self._fit_color_indices:
+            self._fit_color_indices[subplot_key] = 0
+        
+        palette = _config.CURRENT_FIT_PALETTE or _config.CURRENT_THEME.fit_colorway
+        color_index = self._fit_color_indices[subplot_key]
+        color = palette[color_index % len(palette)]
+        self._fit_color_indices[subplot_key] += 1
         return color
 
     @classmethod
@@ -715,7 +739,12 @@ class QualibrationFigure:
             # Assign a color if not overridden by style
             ov_style = dict(style_overrides)
             if "color" not in ov_style:
-                ov_style["color"] = self._next_color()
+                # Use fit color palette for FitOverlay and RefLine
+                from .overlays import FitOverlay, RefLine
+                if isinstance(ov, (FitOverlay, RefLine)):
+                    ov_style["color"] = self._next_fit_color(row_main, col)
+                else:
+                    ov_style["color"] = self._next_color()
             # Pass legend grouping to overlay implementation
             ov_style["legendgroup"] = group_label
             ov_style["showlegend"] = show_lgd
