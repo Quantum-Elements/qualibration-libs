@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Optional
 
 import numpy as np
 import plotly.graph_objects as go
 
-from .config import PlotTheme
 
 
 class Overlay:
@@ -263,6 +262,10 @@ class RefLine(Overlay):
     dash: str = "dot"
     width: float | None = None
     color: str | None = None
+    def __post_init__(self):
+        if self.color is not None:
+            if not isinstance(self.color, str) or len(self.color) != 7 or not self.color.startswith("#") or not all(ch in "0123456789abcdefABCDEF" for ch in self.color[1:]):
+                raise ValueError("RefLine.color must be a 6-digit hex string like '#RRGGBB'.")
 
     def add_to(self, fig: go.Figure, *, row: int, col: int, theme, **style):
         """Add reference lines to the specified subplot.
@@ -283,17 +286,18 @@ class RefLine(Overlay):
         Notes:
         - Invalid `row`/`col` values or missing subplot grids will raise Plotly errors.
         """
-        line_config = {
-            "width": self.width or theme.line_width,
-            "dash": self.dash,
-            **style.get("line", {}),
-        }
-        if self.color is not None:
-            line_config["color"] = self.color
         if self.x is not None:
-            fig.add_vline(x=self.x, row=row, col=col, line=line_config)
+            line_style = {"dash": self.dash, "width": self.width or theme.line_width}
+            if self.color:
+                line_style["color"] = self.color
+            line_style.update(style.get("line", {}))
+            fig.add_vline(x=self.x, line=line_style, row=row, col=col)
         if self.y is not None:
-            fig.add_hline(y=self.y, row=row, col=col, line=line_config)
+            line_style = {"dash": self.dash, "width": self.width or theme.line_width}
+            if self.color:
+                line_style["color"] = self.color
+            line_style.update(style.get("line", {}))
+            fig.add_hline(y=self.y, line=line_style, row=row, col=col)
 
 
 @dataclass
